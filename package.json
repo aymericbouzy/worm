@@ -1,0 +1,17 @@
+{
+  "name": "worm",
+  "version": "1.0.0",
+  "description": "WORM (Wonderful ORM) is Javascript powered",
+  "main": "index.js",
+  "author": "Aymeric Bouzy <aymeric.bouzy@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^5.7.0",
+    "jest": "^23.6.0",
+    "mongodb": "^3.1.8",
+    "mongodb-memory-server": "^2.4.3"
+  },
+  "scripts": {
+    "test": "jest"
+  }
+}
