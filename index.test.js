@@ -4,6 +4,7 @@ import MongodbMemoryServer from "mongodb-memory-server"
 class User extends Model {
   static schema = {
     name: String,
+    verified: { type: Boolean, default: () => false },
   }
 }
 
@@ -29,6 +30,15 @@ it("stores user to database", async () => {
   expect(await User.find()).toEqual([
     expect.objectContaining({ name: "Aymeric" }),
   ])
+})
+
+it("works without parameters", () => {
+  const user = new User()
+  expect(user).toEqual(
+    expect.objectContaining({
+      save: expect.any(Function),
+    })
+  )
 })
 
 it("sets some id", async () => {
@@ -67,6 +77,25 @@ describe("user was created", () => {
     expect(user.name).toBe("123")
     const otherUser = new User({ name: 123 })
     expect(otherUser.name).toBe("123")
+  })
+
+  it("sets default values", () => {
+    expect(user.verified).toBe(false)
+  })
+
+  it("stores boolean", async () => {
+    user.verified = true
+    await user.save()
+    expect(await User.find()).toEqual([
+      expect.objectContaining({ verified: true }),
+    ])
+  })
+
+  it("ignores unknown properties", async () => {
+    User.schema = { name: String }
+    const [user] = await User.find()
+    expect(user.verified).toBe(undefined)
+    expect(user.name).toBe("Aymeric")
   })
 })
 

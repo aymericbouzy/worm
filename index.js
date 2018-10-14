@@ -3,21 +3,30 @@ import { promisify } from "util"
 import mongoDiff from "./mongoDiff"
 
 export class Model {
-  constructor(params) {
+  constructor(params = {}) {
     this.current = {}
-    for (const [key, type] of Object.entries(this.constructor.schema)) {
+    const { schema } = this.constructor
+    for (const [key, type] of Object.entries(schema)) {
+      const coerce = type.type || type
       Object.defineProperty(this, key, {
         get() {
           return this.current[key]
         },
         set(value) {
           this.current[key] =
-            value === undefined || value === null ? value : type(value)
+            value === undefined || value === null ? value : coerce(value)
         },
       })
+      if (type.default !== undefined && params[key] === undefined) {
+        params[key] =
+          typeof type.default === "function" ? type.default() : type.default
+      }
     }
+    const knownParams = new Set(Object.keys(schema))
     for (const [key, value] of Object.entries(params)) {
-      this[key] = value
+      if (knownParams.has(key)) {
+        this[key] = value
+      }
     }
     this.previous = { ...this.current }
   }
