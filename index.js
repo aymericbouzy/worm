@@ -11,7 +11,8 @@ export class Model {
           return this.current[key]
         },
         set(value) {
-          return (this.current[key] = type(value))
+          this.current[key] =
+            value === undefined || value === null ? value : type(value)
         },
       })
     }
@@ -23,6 +24,10 @@ export class Model {
 
   get _id() {
     return this.current._id
+  }
+
+  set _id(id) {
+    this.current._id = id
   }
 
   get id() {
@@ -52,11 +57,11 @@ export class Model {
     }
   }
 
-  static find() {
+  static async find() {
     const { collection } = this
     const query = collection.find()
     query.asyncToArray = promisify(query.toArray)
-    return query.asyncToArray()
+    return (await query.asyncToArray()).map(object => new this(object))
   }
 
   static remove() {

@@ -35,6 +35,7 @@ it("sets some id", async () => {
   const user = new User({ name: "Aymeric" })
   await user.save()
   expect(user._id).not.toBe(undefined)
+  expect(user.id).toBe(user._id)
 })
 
 describe("user was created", () => {
@@ -53,6 +54,12 @@ describe("user was created", () => {
     expect(await User.find()).toEqual([
       expect.objectContaining({ _id: users[0]._id, name: "Lucie" }),
     ])
+  })
+
+  it("removes property", async () => {
+    user.name = undefined
+    await user.save()
+    expect(user.name).toBe(undefined)
   })
 
   it("sets to the correct type", () => {
