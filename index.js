@@ -1,8 +1,32 @@
 import { MongoClient } from "mongodb"
 import { promisify } from "util"
+import mongoDiff from "./mongoDiff"
+
 export class Model {
   constructor(params) {
-    Object.assign(this, params)
+    this.current = {}
+    for (const [key, type] of Object.entries(this.constructor.schema)) {
+      Object.defineProperty(this, key, {
+        get() {
+          return this.current[key]
+        },
+        set(value) {
+          return (this.current[key] = type(value))
+        },
+      })
+    }
+    for (const [key, value] of Object.entries(params)) {
+      this[key] = value
+    }
+    this.previous = { ...this.current }
+  }
+
+  get _id() {
+    return this.current._id
+  }
+
+  get id() {
+    return this._id
   }
 
   static get collection() {
@@ -10,14 +34,22 @@ export class Model {
     return db.collection(name)
   }
 
-  toObject() {
-    return { name: "Aymeric" }
-  }
-
-  save() {
+  async save() {
     const { collection } = this.constructor
-    collection.asyncInsertOne = promisify(this.constructor.collection.insertOne)
-    return collection.asyncInsertOne(this.toObject())
+    if (this._id) {
+      collection.asyncUpdateOne = promisify(
+        this.constructor.collection.updateOne
+      )
+      const diff = mongoDiff(this.previous, this.current)
+      this.previous = { ...this.current }
+      return collection.asyncUpdateOne({ _id: this._id }, diff)
+    } else {
+      collection.asyncInsertOne = promisify(
+        this.constructor.collection.insertOne
+      )
+      this.previous = { ...this.current }
+      return await collection.asyncInsertOne(this.current)
+    }
   }
 
   static find() {
@@ -25,6 +57,12 @@ export class Model {
     const query = collection.find()
     query.asyncToArray = promisify(query.toArray)
     return query.asyncToArray()
+  }
+
+  static remove() {
+    const { collection } = this
+    collection.asyncDeleteMany = promisify(collection.deleteMany)
+    return collection.asyncDeleteMany({})
   }
 }
 
