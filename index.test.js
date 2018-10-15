@@ -16,6 +16,8 @@ class Book extends Model {
       at: Date,
       by: String,
     },
+    readers: [User],
+    readerIds: [String],
   }
 }
 
@@ -158,6 +160,33 @@ describe("sub model", () => {
         }),
       })
     )
+  })
+
+  describe("array type", () => {
+    it("sets initial value to empty array by default", () => {
+      expect(book).toEqual(
+        expect.objectContaining({
+          readers: [],
+          readerIds: [],
+        })
+      )
+    })
+
+    it("accepts initial values", () => {
+      book = new Book({
+        readers: [{ name: "Aymeric" }, { name: "Lucie" }],
+        readerIds: [1, 2],
+      })
+      expect(book).toEqual(
+        expect.objectContaining({
+          readers: [
+            expect.objectContaining({ name: "Aymeric" }),
+            expect.objectContaining({ name: "Lucie" }),
+          ],
+          readerIds: ["1", "2"],
+        })
+      )
+    })
   })
 })
 

@@ -13,6 +13,13 @@ export function analyzeType(type) {
     const { coerce, defaultValue } = analyzeType(type.type)
     return { coerce, defaultValue: type.default || defaultValue }
   }
+  if (Array.isArray(type)) {
+    const { coerce } = analyzeType(type[0])
+    return {
+      coerce: items => items.map(item => coerce(item)),
+      defaultValue: () => [],
+    }
+  }
   const Type =
     type.prototype instanceof SubModel
       ? type
