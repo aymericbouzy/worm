@@ -5,6 +5,17 @@ class User extends Model {
   static schema = {
     name: String,
     verified: { type: Boolean, default: () => false },
+    verifiedAt: Date,
+  }
+}
+
+class Book extends Model {
+  static schema = {
+    author: User,
+    published: {
+      at: Date,
+      by: String,
+    },
   }
 }
 
@@ -39,6 +50,11 @@ it("works without parameters", () => {
       save: expect.any(Function),
     })
   )
+})
+
+it("works with dates", () => {
+  const user = new User({ verifiedAt: new Date() })
+  expect(user.verifiedAt).toEqual(expect.any(Date))
 })
 
 it("sets some id", async () => {
@@ -92,10 +108,56 @@ describe("user was created", () => {
   })
 
   it("ignores unknown properties", async () => {
-    User.schema = { name: String }
+    class User extends Model {
+      static schema = {
+        name: String,
+      }
+    }
     const [user] = await User.find()
     expect(user.verified).toBe(undefined)
     expect(user.name).toBe("Aymeric")
+  })
+})
+
+describe("sub model", () => {
+  let book
+
+  beforeEach(async () => {
+    book = new Book()
+    await book.save()
+  })
+
+  it("defines sub models", () => {
+    expect(book).toEqual(
+      expect.objectContaining({
+        author: expect.objectContaining({
+          verified: false,
+        }),
+        published: expect.any(Object),
+      })
+    )
+  })
+
+  it("accepts initial values", () => {
+    book = new Book({
+      author: { name: "Aymeric" },
+      published: {
+        at: new Date("2018-08-11"),
+        by: "Aymeric's press",
+      },
+    })
+    expect(book).toEqual(
+      expect.objectContaining({
+        author: expect.objectContaining({
+          verified: false,
+          name: "Aymeric",
+        }),
+        published: expect.objectContaining({
+          at: expect.any(Date),
+          by: "Aymeric's press",
+        }),
+      })
+    )
   })
 })
 
