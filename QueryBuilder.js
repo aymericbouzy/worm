@@ -43,7 +43,7 @@ export default class QueryBuilder {
 
   elemMatch(makeCondition) {
     return this.equals({
-      $elemMatch: makeCondition(new QueryBuilder()).conditions,
+      $elemMatch: makeCondition(new this.constructor()).conditions,
     })
   }
 
@@ -68,7 +68,7 @@ export default class QueryBuilder {
   }
 
   or(makeConditions) {
-    this.conditions.$or = makeConditions(() => new QueryBuilder()).map(
+    this.conditions.$or = makeConditions(() => new this.constructor()).map(
       query => query.conditions
     )
     return this

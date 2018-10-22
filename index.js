@@ -2,6 +2,14 @@ import { MongoClient } from "mongodb"
 import { promisify } from "util"
 import mongoDiff from "./mongoDiff"
 
+const mapValues = (object, mapper) => {
+  const result = {}
+  for (const key in object) {
+    result[key] = mapper(object[key])
+  }
+  return result
+}
+
 export function analyzeType(type) {
   if (type === Boolean || type === String || type === Number) {
     return { coerce: type }
@@ -33,18 +41,21 @@ export function analyzeType(type) {
     defaultValue: makeInstance,
   }
 }
+
+const current = Symbol()
+const previous = Symbol()
 export class SubModel {
   constructor(params = {}) {
-    this.current = {}
+    this[current] = {}
     const { schema } = this.constructor
     for (const [key, type] of Object.entries(schema)) {
       const { defaultValue, coerce } = analyzeType(type)
       Object.defineProperty(this, key, {
         get() {
-          return this.current[key]
+          return this[current][key]
         },
         set(value) {
-          this.current[key] =
+          this[current][key] =
             value === undefined || value === null ? value : coerce(value)
         },
       })
@@ -63,24 +74,30 @@ export class SubModel {
         this[key] = value
       }
     }
-    this.previous = { ...this.current }
+    this[previous] = params
   }
 
   toObject() {
-    return this.current
+    const toObject = value =>
+      value && value.toObject
+        ? value.toObject()
+        : value instanceof Array
+          ? value.map(toObject)
+          : value
+    return mapValues(this[current], toObject)
   }
 
   toJSON() {
-    return this.current
+    return this.toObject()
   }
 }
 export class Model extends SubModel {
   get _id() {
-    return this.current._id
+    return this[current]._id
   }
 
   set _id(id) {
-    this.current._id = id
+    this[current]._id = id
   }
 
   get id() {
@@ -94,19 +111,21 @@ export class Model extends SubModel {
 
   async save() {
     const { collection } = this.constructor
+    const object = this.toObject()
     if (this._id) {
       collection.asyncUpdateOne = promisify(
         this.constructor.collection.updateOne
       )
-      const diff = mongoDiff(this.previous, this.current)
-      this.previous = { ...this.current }
-      return collection.asyncUpdateOne({ _id: this._id }, diff)
+      const diff = mongoDiff(this[previous], object)
+      this[previous] = object
+      await collection.asyncUpdateOne({ _id: this._id }, diff)
     } else {
       collection.asyncInsertOne = promisify(
         this.constructor.collection.insertOne
       )
-      this.previous = { ...this.current }
-      return await collection.asyncInsertOne(this.current)
+      this[previous] = object
+      await collection.asyncInsertOne(object)
+      this._id = object._id
     }
   }
 

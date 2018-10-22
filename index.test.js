@@ -35,6 +35,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
   await User.remove()
+  await Book.remove()
 })
 
 it("stores user to database", async () => {
@@ -162,6 +163,28 @@ describe("sub model", () => {
     )
   })
 
+  it("updates sub model", async () => {
+    book.author.name = "Aymeric"
+    await book.save()
+    expect(book.toObject()).toEqual({
+      _id: expect.anything(),
+      author: {
+        name: "Aymeric",
+        verified: false,
+      },
+      published: {},
+      readerIds: [],
+      readers: [],
+    })
+    expect(await Book.find()).toEqual([
+      expect.objectContaining({
+        author: expect.objectContaining({
+          name: "Aymeric",
+        }),
+      }),
+    ])
+  })
+
   describe("array type", () => {
     it("sets initial value to empty array by default", () => {
       expect(book).toEqual(
@@ -186,6 +209,22 @@ describe("sub model", () => {
           readerIds: ["1", "2"],
         })
       )
+    })
+
+    it("updates array", async () => {
+      book.readers = [{ name: "Aymeric" }]
+      book.readerIds = [1]
+      await book.save()
+      expect(await Book.find()).toEqual([
+        expect.objectContaining({
+          readers: [
+            expect.objectContaining({
+              name: "Aymeric",
+            }),
+          ],
+          readerIds: ["1"],
+        }),
+      ])
     })
   })
 })
