@@ -4,6 +4,7 @@ export default class QueryBuilder {
   constructor({ collection } = {}) {
     this.collection = collection
     this.conditions = {}
+    this.operation = "find"
   }
 
   async find() {
@@ -11,6 +12,10 @@ export default class QueryBuilder {
     const query = collection.find(this.conditions)
     query.asyncToArray = promisify(query.toArray)
     return await query.asyncToArray()
+  }
+
+  then(resolve, reject) {
+    return this[this.operation]().then(resolve, reject)
   }
 
   where(path) {

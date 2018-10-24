@@ -1,6 +1,7 @@
 import { MongoClient } from "mongodb"
 import { promisify } from "util"
 import mongoDiff from "./mongoDiff"
+import QueryBuilder from "./QueryBuilder"
 
 const mapValues = (object, mapper) => {
   const result = {}
@@ -44,6 +45,7 @@ export function analyzeType(type) {
 
 const current = Symbol()
 const previous = Symbol()
+
 export class SubModel {
   constructor(params = {}) {
     this[current] = {}
@@ -68,7 +70,7 @@ export class SubModel {
         )
       }
     }
-    const knownParams = new Set(Object.keys(schema))
+    const knownParams = new Set([...Object.keys(schema), "_id"])
     for (const [key, value] of Object.entries(params)) {
       if (knownParams.has(key)) {
         this[key] = value
@@ -105,28 +107,51 @@ export class Model extends SubModel {
   }
 
   static get collection() {
+    if (this.memoizedCollection) {
+      return this.memoizedCollection
+    }
     const { db, name } = this
-    return db.collection(name)
+    const collection = db.collection(name)
+    collection.asyncUpdateOne = promisify(collection.updateOne)
+    collection.asyncInsertOne = promisify(collection.insertOne)
+    return (this.memoizedCollection = collection)
+  }
+
+  static query = {}
+
+  static get QueryBuilder() {
+    if (this.memoizedQueryBuilder) {
+      return this.memoizedQueryBuilder
+    }
+    const self = this
+    class ModelQueryBuilder extends QueryBuilder {
+      async find() {
+        const books = (await super.find()).map(object => new self(object))
+        return books
+      }
+    }
+    this.memoizedQueryBuilder = class extends ModelQueryBuilder {}
+    Object.assign(this.memoizedQueryBuilder.prototype, this.query)
+    return this.memoizedQueryBuilder
   }
 
   async save() {
     const { collection } = this.constructor
     const object = this.toObject()
     if (this._id) {
-      collection.asyncUpdateOne = promisify(
-        this.constructor.collection.updateOne
-      )
       const diff = mongoDiff(this[previous], object)
       this[previous] = object
       await collection.asyncUpdateOne({ _id: this._id }, diff)
     } else {
-      collection.asyncInsertOne = promisify(
-        this.constructor.collection.insertOne
-      )
       this[previous] = object
       await collection.asyncInsertOne(object)
       this._id = object._id
     }
+  }
+
+  static where(path) {
+    const queryBuilder = new this.QueryBuilder({ collection: this.collection })
+    return queryBuilder.where(path)
   }
 
   static async find() {

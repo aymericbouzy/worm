@@ -19,6 +19,12 @@ class Book extends Model {
     readers: [User],
     readerIds: [String],
   }
+
+  static query = {
+    withReaders() {
+      return this.where("readers.0").exists()
+    },
+  }
 }
 
 let mongod
@@ -65,6 +71,11 @@ it("sets some id", async () => {
   await user.save()
   expect(user._id).not.toBe(undefined)
   expect(user.id).toBe(user._id)
+})
+
+it("initializes with id", () => {
+  const user = new User({ _id: "test" })
+  expect(user.id).toBe("test")
 })
 
 describe("user was created", () => {
@@ -226,6 +237,37 @@ describe("sub model", () => {
         }),
       ])
     })
+  })
+})
+
+describe("query", () => {
+  let aftermath, silmarillion
+
+  beforeEach(async () => {
+    aftermath = new Book({
+      author: {
+        name: "Stephen King",
+      },
+    })
+    await aftermath.save()
+    silmarillion = new Book({
+      author: {
+        name: "J.R.R. Tolkien",
+      },
+      readers: [{ name: "Aymeric" }],
+    })
+    await silmarillion.save()
+  })
+
+  it("has filters", async () => {
+    const books = await Book.where("author.name").equals("Stephen King")
+    expect(books.length).toBe(1)
+    expect(books[0].id).toEqual(aftermath.id)
+    expect(books).toEqual([
+      expect.objectContaining({
+        id: aftermath.id,
+      }),
+    ])
   })
 })
 
