@@ -126,8 +126,12 @@ export class Model extends SubModel {
     const self = this
     class ModelQueryBuilder extends QueryBuilder {
       async find() {
-        const books = (await super.find()).map(object => new self(object))
-        return books
+        return (await super.find()).map(object => new self(object))
+      }
+
+      async findOne() {
+        const found = await super.findOne()
+        return found ? new self(found) : null
       }
     }
     this.memoizedQueryBuilder = class extends ModelQueryBuilder {}

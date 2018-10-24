@@ -14,6 +14,12 @@ export default class QueryBuilder {
     return await query.asyncToArray()
   }
 
+  async findOne() {
+    const { collection } = this
+    collection.asyncFindOne = promisify(collection.findOne)
+    return await collection.asyncFindOne(this.conditions, {})
+  }
+
   then(resolve, reject) {
     return this[this.operation]().then(resolve, reject)
   }

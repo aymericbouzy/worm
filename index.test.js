@@ -261,13 +261,28 @@ describe("query", () => {
 
   it("has filters", async () => {
     const books = await Book.where("author.name").equals("Stephen King")
-    expect(books.length).toBe(1)
-    expect(books[0].id).toEqual(aftermath.id)
     expect(books).toEqual([
       expect.objectContaining({
         id: aftermath.id,
       }),
     ])
+  })
+
+  it("has custom filters", async () => {
+    const books = await Book.where().withReaders()
+    expect(books).toEqual([expect.objectContaining({ id: silmarillion.id })])
+  })
+
+  it("works with findOne", async () => {
+    const book = await Book.where("author.name")
+      .equals("J.R.R. Tolkien")
+      .findOne()
+    expect(book.id).toEqual(silmarillion.id)
+    expect(
+      await Book.where("author.name")
+        .equals("Unknown author")
+        .findOne()
+    ).toBe(null)
   })
 })
 
